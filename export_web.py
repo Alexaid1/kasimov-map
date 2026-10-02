@@ -141,7 +141,8 @@ def main():
     bd = bdb.buildings(d, poly, core, okn)
     keep = ["bid", "address", "addr_src", "type", "name", "levels", "levels_src", "year", "year_src", "period",
             "year_est", "heritage", "heritage_cat", "okn_id", "material", "condition", "use", "notes", "photo",
-            "checked", "info_src", "src", "area_m2", "complete", "in_settlement", "in_core"]
+            "checked", "info_src", "cad_num", "egrn_purpose", "parcel_cad", "parcel_use",
+            "src", "area_m2", "complete", "in_settlement", "in_core"]
     counts["buildings"] = write("buildings", [dict(geometry=g, **{k: x[k] for k in keep})
                                               for g, (_, x) in zip(bd.geometry, bd.iterrows())],
                                 simplify=0.4, drop_empty=True)

@@ -25,11 +25,13 @@ const FIELD = {
   period: "Период", year_est: "Год (оценка)", heritage: "Объект наследия", heritage_cat: "Категория наследия",
   okn_id: "№ объекта", material: "Материал стен", condition: "Состояние", use: "Использование", notes: "Заметки",
   photo: "Фото", checked: "Проверено", info_src: "Источник ручных данных", area_m2: "Площадь застройки, м²",
-  complete: "Заполненность (из 6)",
+  complete: "Заполненность (из 6)", cad_num: "Кадастровый № здания", egrn_purpose: "Назначение (ЕГРН)",
+  parcel_cad: "Кадастровый № участка", parcel_use: "Использование участка",
 };
 // карточка здания: поля по порядку и источники к ним
 const BCARD = [["type"], ["levels", "levels_src"], ["year", "year_src"], ["period"], ["material"], ["condition"],
-  ["use"], ["heritage"], ["heritage_cat"], ["name"], ["area_m2"], ["notes"], ["checked"], ["info_src"]];
+  ["use"], ["heritage"], ["heritage_cat"], ["name"], ["egrn_purpose"], ["cad_num"], ["parcel_cad"], ["parcel_use"],
+  ["area_m2"], ["notes"], ["checked"], ["info_src"]];
 const HIDDEN = new Set(["group"]);
 
 const D = {};          // данные по файлам
@@ -103,7 +105,8 @@ function objOk(f) {
 const GAPS = {
   address: (p) => !p.address, levels: (p) => p.levels == null, year: (p) => p.year_est == null,
   sparse: (p) => (p.complete || 0) <= 1, known: (p) => !!p.address, heritage: (p) => !!p.heritage,
-  manual: (p) => !!(p.info_src || p.checked || p.material || p.condition || p.notes),
+  manual: (p) => !!(p.info_src || p.checked || p.condition || p.notes),
+  egrn: (p) => !!(p.cad_num || p.parcel_cad),
 };
 
 function bldOk(f) {

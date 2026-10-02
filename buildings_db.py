@@ -92,6 +92,66 @@ def year_est(year, period):
     return None
 
 
+ADDR_TYPES = [(r"улица|ул\.?", "ул."), (r"переулок|пер\.?", "пер."), (r"площадь|пл\.?", "пл."),
+              (r"проезд|пр-д\.?", "пр."), (r"тупик|туп\.?", "туп.")]   # «Набережная» в Касимове — название улицы
+
+
+def norm_addr(a):
+    """Единый вид адреса: «улица Набережная, дом 12.» / «ул Набережная, д 12» → «ул. Набережная, 12»."""
+    if a is None or (isinstance(a, float) and pd.isna(a)) or not str(a).strip():
+        return None
+    s = re.sub(r"\s+", " ", str(a)).strip(" .,")
+    for pat, rep in ADDR_TYPES:
+        s = re.sub(rf"(?<![А-Яа-яЁё]){pat}(?![А-Яа-яЁё])", rep, s, flags=re.I)
+    s = re.sub(r",?\s*(?:дом|д\.?)\s*(?=\d)", ", ", s, flags=re.I)
+    s = re.sub(r"\s*,\s*", ", ", s).replace("..", ".")
+    s = re.sub(r"\.\s+(?=\d)", ", ", s) if "," not in s else s
+    return s.strip(" ,")
+
+
+def short_addr(a):
+    """«Российская Федерация, Рязанская область, м.о. Касимовский, г. Касимов, ул. Начальная, д. 10» → «ул. Начальная, д. 10»."""
+    if not a:
+        return None
+    a = re.split(r"(?:г\.?|город)\s*Касимов,?", str(a))[-1].strip(" ,")
+    return a or None
+
+
+def egrn(b, rp):
+    """ЕГРН (nspd.py): здание — назначение, этажность, год, материал, адрес; участок — адрес и использование."""
+    if mm.DATA.joinpath("nspd_buildings.gpkg").exists():
+        e = gpd.read_file(mm.DATA / "nspd_buildings.gpkg")
+        j = gpd.sjoin(rp, e, predicate="within", how="inner")
+        j = j[~j.index.duplicated()]
+        b.loc[j.index, "cad_num"] = j["cad"]
+        b.loc[j.index, "egrn_purpose"] = j["purpose"].fillna(j["name"])
+        lv = pd.to_numeric(j["floors"], errors="coerce")
+        b.loc[lv.dropna().index, "levels"] = lv.dropna()
+        b.loc[lv.dropna().index, "levels_src"] = "ЕГРН"
+        yr = pd.to_numeric(j["year_built"].fillna(j["year_commissioning"]), errors="coerce")
+        yr = yr[(yr > 1500) & (yr < 2100)]
+        b.loc[yr.index, "year"] = yr
+        b.loc[yr.index, "year_src"] = "ЕГРН"
+        b.loc[j.index, "material"] = j["materials"]
+        ad = j["address"].map(short_addr).dropna()
+        b.loc[ad.index, "address"] = ad
+        b.loc[ad.index, "addr_src"] = "ЕГРН: здание"
+        tp = b.loc[j.index, "type"].isna()
+        b.loc[tp[tp].index, "type"] = j.loc[tp[tp].index, "purpose"]
+        print(f"  ЕГРН, здания: {len(j)}")
+    if mm.DATA.joinpath("nspd_parcels.gpkg").exists():
+        p = gpd.read_file(mm.DATA / "nspd_parcels.gpkg")
+        j = gpd.sjoin(rp, p, predicate="within", how="inner")
+        j = j[~j.index.duplicated()]
+        b.loc[j.index, "parcel_cad"] = j["cad"]
+        b.loc[j.index, "parcel_use"] = j["use"]
+        ad = j["address"].map(short_addr).dropna()
+        ad = ad[b.loc[ad.index, "address"].isna()]
+        b.loc[ad.index, "address"] = ad
+        b.loc[ad.index, "addr_src"] = "ЕГРН: земельный участок"
+        print(f"  ЕГРН, участки: зданий на участках {len(j)}, адрес по участку {len(ad)}")
+
+
 def load_info():
     if not INFO.exists():
         pd.DataFrame(columns=INFO_COLS).to_csv(INFO, sep=";", index=False, encoding="utf-8-sig")
@@ -149,8 +209,10 @@ def buildings(d, settlement, core, okn):
     b.loc[need, "address"] = oj["o_addr"].reindex(b.index[need]).values
     b.loc[need, "addr_src"] = "Приказ № 2969 / ЕГРОКН"
 
-    for c in ("material", "condition", "use", "notes", "photo", "checked", "info_src"):
+    for c in ("material", "condition", "use", "notes", "photo", "checked", "info_src", "cad_num", "egrn_purpose",
+              "parcel_cad", "parcel_use"):
         b[c] = None
+    egrn(b, rp)
 
     # ручная таблица перекрывает всё
     info = load_info()
@@ -166,6 +228,7 @@ def buildings(d, settlement, core, okn):
             if c in ("address", "levels", "year"):
                 b.loc[m & v.notna().reindex(b.index, fill_value=False), f"{'addr' if c == 'address' else c}_src"] = "ручной ввод"
 
+    b["address"] = b["address"].map(norm_addr)
     b["year_est"] = [year_est(y, p) for y, p in zip(b["year"], b["period"])]
     b["complete"] = b[COMPLETE].notna().sum(axis=1)
     b["area_m2"] = b.area.round()
