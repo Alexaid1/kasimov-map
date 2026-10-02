@@ -1,0 +1,22 @@
+{
+ "updated": "2026-10-02 22:58",
+ "counts": {
+  "boundaries": 3,
+  "order_points": 40,
+  "ovragi": 3,
+  "objects": 186,
+  "object_buildings": 108,
+  "buildings_levels": 358,
+  "ensembles": 4,
+  "dominants": 8,
+  "squares": 4,
+  "streets": 25,
+  "views": 3,
+  "landscape": 1,
+  "verify": 8,
+  "projects": 3
+ },
+ "core_ha": 49,
+ "settlement_ha": 361,
+ "tall_levels": 4
+}

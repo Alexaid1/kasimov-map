@@ -1,0 +1,84 @@
+:root {
+  --bg: #F6F4EE; --panel: #FFFFFF; --text: #26262B; --muted: #6B6A70; --line: #E4E0D7;
+  --accent: #7A1F2B; --accent-soft: #F3E6E7;
+  --l1: #1F3A5F; --l2: #B5532E; --l3: #7A1F2B;
+  --federal: #2B0F14; --regional: #6E1F2B; --local: #A8434F; --value: #6B6157;
+  --ravine: #6B7F4E; --ens: #8A5A44; --view: #2F5D8A; --plan: #4A4A52; --prob: #C8402F; --pot: #2E7D6B;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 14px/1.4 "Manrope", system-ui, sans-serif; }
+body { display: flex; }
+#map { flex: 1; height: 100%; background: var(--bg); }
+
+#panel { width: 360px; height: 100%; overflow-y: auto; background: var(--panel); border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; z-index: 1000; }
+#panel header { padding: 18px 18px 10px; border-bottom: 1px solid var(--line); }
+h1 { margin: 0; font-size: 22px; font-weight: 700; color: var(--accent); }
+.sub { margin: 2px 0 0; color: var(--muted); }
+.meta { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+section { padding: 12px 18px; border-bottom: 1px solid var(--line); }
+section.grow { flex: 1; }
+h2 { margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.field { margin-top: 8px; }
+.field.row { display: flex; gap: 10px; }
+.field.row label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+input[type=search], select, input[type=number] { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line);
+  border-radius: 6px; background: #fff; color: var(--text); }
+input[type=number] { width: 80px; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+input[type=checkbox] { accent-color: var(--accent); }
+
+.lgroup { margin-bottom: 8px; }
+.lgroup-title { font-weight: 600; margin: 6px 0 2px; }
+.check { display: flex; align-items: center; gap: 8px; padding: 2px 0; cursor: pointer; }
+.sw { width: 18px; height: 12px; border-radius: 2px; flex: none; }
+.sw.line { height: 0; border-top: 3px solid; border-radius: 0; }
+.sw.dash { height: 0; border-top: 2px dashed; border-radius: 0; }
+.sw.dot { width: 12px; height: 12px; border-radius: 50%; margin: 0 3px; }
+.count { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 14px;
+  cursor: pointer; font-size: 13px; user-select: none; background: #fff; }
+.chip.on { background: var(--accent-soft); border-color: var(--accent); }
+.chip .sw.dot { margin: 0; width: 10px; height: 10px; }
+
+.buttons { display: flex; gap: 8px; margin-top: 8px; }
+button { font: inherit; font-weight: 600; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--accent);
+  background: var(--accent); color: #fff; cursor: pointer; flex: 1; }
+button:hover { filter: brightness(1.12); }
+.hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+
+#list { margin: 0; padding: 0 0 0 22px; }
+#list li { padding: 4px 0; cursor: pointer; border-bottom: 1px dashed var(--line); }
+#list li:hover .nm { color: var(--accent); }
+#list .ad { display: block; font-size: 12px; color: var(--muted); }
+footer { padding: 10px 18px 16px; font-size: 11px; color: var(--muted); }
+
+#toggle { display: none; }
+.muted { filter: grayscale(.8) contrast(.85) brightness(1.08); }
+
+.leaflet-popup-content { font: 13px/1.45 "Manrope", system-ui, sans-serif; margin: 12px 14px; }
+.pop h3 { margin: 0 0 4px; font-size: 14px; }
+.pop table { border-collapse: collapse; }
+.pop td { padding: 1px 8px 1px 0; vertical-align: top; }
+.pop td:first-child { color: var(--muted); white-space: nowrap; }
+.leaflet-tooltip.lbl { background: rgba(255,255,255,.85); border: 0; box-shadow: none; font: 600 12px "Manrope", sans-serif;
+  padding: 1px 4px; color: var(--text); }
+.leaflet-tooltip.lbl:before { display: none; }
+.vnum { background: var(--text); color: #fff; border: 2px solid #fff; border-radius: 50%; width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center; font: 700 12px "Manrope", sans-serif; }
+.dom { color: var(--text); font-size: 18px; line-height: 18px; text-align: center; text-shadow: 0 0 2px #fff, 0 0 2px #fff; }
+
+@media (max-width: 760px) {
+  body { display: block; }
+  #map { position: fixed; inset: 0; }
+  #panel { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; height: 62%;
+    border-right: 0; border-top: 1px solid var(--line); border-radius: 12px 12px 0 0; transform: translateY(100%);
+    transition: transform .25s; }
+  #panel.open { transform: none; }
+  #toggle { display: block; position: fixed; right: 12px; bottom: 16px; z-index: 1100; width: 48px; height: 48px;
+    border-radius: 50%; font-size: 20px; padding: 0; flex: none; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+}

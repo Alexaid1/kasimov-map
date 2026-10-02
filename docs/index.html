@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Касимов: карта наследия</title>
+<meta name="description" content="Интерактивная карта исторического центра Касимова: границы, ОКН, ценные объекты, этажность, ценности и проблемы.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<aside id="panel">
+  <header>
+    <h1>Касимов</h1>
+    <p class="sub">Историческое поселение и граница проекта</p>
+    <p class="meta" id="meta"></p>
+  </header>
+
+  <section>
+    <h2>Слои</h2>
+    <div id="layers"></div>
+  </section>
+
+  <section>
+    <h2>Объекты наследия</h2>
+    <input type="search" id="q" placeholder="Поиск по названию или адресу">
+    <div class="field">
+      <div class="label">Категория</div>
+      <div id="f-group" class="chips"></div>
+    </div>
+    <div class="field">
+      <div class="label">Территория</div>
+      <select id="f-area">
+        <option value="all">Все объекты</option>
+        <option value="settlement">В историческом поселении</option>
+        <option value="core">В границе проекта</option>
+        <option value="outside">В поселении, вне границы проекта</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="label">Точность привязки</div>
+      <div id="f-acc" class="checks"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Этажность</h2>
+    <div class="field">
+      <div class="label">Этажей: от <b id="lv-v"></b></div>
+      <input type="range" id="f-lv" min="1" max="9" step="1">
+    </div>
+    <div class="field row">
+      <label>Год постройки с <input type="number" id="f-y0" placeholder="—" min="1700" max="2100"></label>
+      <label>по <input type="number" id="f-y1" placeholder="—" min="1700" max="2100"></label>
+    </div>
+  </section>
+
+  <section>
+    <h2>Выгрузка</h2>
+    <label class="check"><input type="checkbox" id="f-view"> Только в видимой области карты</label>
+    <div class="field">
+      <select id="x-what">
+        <option value="objects">Объекты наследия (по фильтрам)</option>
+        <option value="buildings">Здания с этажностью (по фильтрам)</option>
+        <option value="all">Все включённые слои</option>
+      </select>
+    </div>
+    <div class="buttons">
+      <button id="x-csv">CSV (Excel)</button>
+      <button id="x-geojson">GeoJSON (QGIS)</button>
+    </div>
+    <p class="hint" id="x-count"></p>
+  </section>
+
+  <section class="grow">
+    <h2>Найдено: <span id="n-found">0</span></h2>
+    <ol id="list"></ol>
+  </section>
+
+  <footer>
+    Источники: Приказ Минкультуры № 2969; ЕГРОКН (opendata.mkrf.ru); OpenStreetMap; реестр МКД (dom.mingkh.ru).
+  </footer>
+</aside>
+<button id="toggle" aria-label="Панель">☰</button>
+<main id="map"></main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
