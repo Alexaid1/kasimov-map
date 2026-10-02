@@ -1,12 +1,12 @@
 {
- "updated": "2026-10-02 22:58",
+ "updated": "2026-10-02 23:18",
  "counts": {
   "boundaries": 3,
   "order_points": 40,
   "ovragi": 3,
   "objects": 186,
   "object_buildings": 108,
-  "buildings_levels": 358,
+  "buildings": 13264,
   "ensembles": 4,
   "dominants": 8,
   "squares": 4,

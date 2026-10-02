@@ -24,6 +24,58 @@
   </section>
 
   <section>
+    <h2>Территория</h2>
+    <select id="f-area">
+      <option value="all">Весь город</option>
+      <option value="settlement">Историческое поселение</option>
+      <option value="core">Граница проекта</option>
+      <option value="outside">Поселение вне границы проекта</option>
+    </select>
+    <p class="hint">Действует на объекты наследия, здания, список и выгрузку.</p>
+  </section>
+
+  <section>
+    <h2>Здания</h2>
+    <div class="field">
+      <div class="label">Раскрасить по</div>
+      <select id="f-color">
+        <option value="complete">Заполненности данных</option>
+        <option value="levels">Этажности</option>
+        <option value="year">Году / периоду постройки</option>
+        <option value="type">Типу здания</option>
+        <option value="src">Источнику контура</option>
+      </select>
+      <div id="b-legend" class="blegend"></div>
+    </div>
+    <div class="field">
+      <div class="label">Показать</div>
+      <select id="f-gap">
+        <option value="">Все здания</option>
+        <option value="address">Без адреса</option>
+        <option value="levels">Без этажности</option>
+        <option value="year">Без года / периода</option>
+        <option value="sparse">Почти без данных (0–1 поле из 6)</option>
+        <option value="known">С адресом</option>
+        <option value="heritage">Объекты наследия</option>
+        <option value="manual">Дополненные вручную</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="label">Тип</div>
+      <select id="f-type"><option value="">Любой</option></select>
+    </div>
+    <div class="field">
+      <div class="label">Этажей: от <b id="lv-v"></b></div>
+      <input type="range" id="f-lv" min="0" max="9" step="1">
+    </div>
+    <div class="field row">
+      <label>Год с <input type="number" id="f-y0" placeholder="—" min="1500" max="2100"></label>
+      <label>по <input type="number" id="f-y1" placeholder="—" min="1500" max="2100"></label>
+    </div>
+    <p class="hint" id="b-count"></p>
+  </section>
+
+  <section>
     <h2>Объекты наследия</h2>
     <input type="search" id="q" placeholder="Поиск по названию или адресу">
     <div class="field">
@@ -31,29 +83,8 @@
       <div id="f-group" class="chips"></div>
     </div>
     <div class="field">
-      <div class="label">Территория</div>
-      <select id="f-area">
-        <option value="all">Все объекты</option>
-        <option value="settlement">В историческом поселении</option>
-        <option value="core">В границе проекта</option>
-        <option value="outside">В поселении, вне границы проекта</option>
-      </select>
-    </div>
-    <div class="field">
       <div class="label">Точность привязки</div>
       <div id="f-acc" class="checks"></div>
-    </div>
-  </section>
-
-  <section>
-    <h2>Этажность</h2>
-    <div class="field">
-      <div class="label">Этажей: от <b id="lv-v"></b></div>
-      <input type="range" id="f-lv" min="1" max="9" step="1">
-    </div>
-    <div class="field row">
-      <label>Год постройки с <input type="number" id="f-y0" placeholder="—" min="1700" max="2100"></label>
-      <label>по <input type="number" id="f-y1" placeholder="—" min="1700" max="2100"></label>
     </div>
   </section>
 
@@ -63,7 +94,7 @@
     <div class="field">
       <select id="x-what">
         <option value="objects">Объекты наследия (по фильтрам)</option>
-        <option value="buildings">Здания с этажностью (по фильтрам)</option>
+        <option value="buildings">Здания (по фильтрам)</option>
         <option value="all">Все включённые слои</option>
       </select>
     </div>
@@ -80,7 +111,7 @@
   </section>
 
   <footer>
-    Источники: Приказ Минкультуры № 2969; ЕГРОКН (opendata.mkrf.ru); OpenStreetMap; реестр МКД (dom.mingkh.ru).
+    Источники: Приказ Минкультуры № 2969; ЕГРОКН (opendata.mkrf.ru); OpenStreetMap (ODbL); контуры зданий — Overture Maps Foundation, Microsoft ML Buildings (ODbL); реестр МКД (dom.mingkh.ru).
   </footer>
 </aside>
 <button id="toggle" aria-label="Панель">☰</button>

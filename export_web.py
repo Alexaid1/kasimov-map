@@ -19,6 +19,7 @@ import pandas as pd
 from shapely.geometry import LineString, mapping
 from shapely.ops import linemerge, nearest_points, unary_union
 
+import buildings_db as bdb
 import make_maps as mm
 
 WEB = Path("docs") / "data"
@@ -53,8 +54,9 @@ def clean(v):
     return v
 
 
-def write(name, rows, simplify=0):
-    """rows: dict(geometry=<shapely в CRS_M>, **свойства) → docs/data/<name>.geojson."""
+def write(name, rows, simplify=0, drop_empty=False):
+    """rows: dict(geometry=<shapely в CRS_M>, **свойства) → docs/data/<name>.geojson.
+    drop_empty: не писать пустые свойства (экономит размер больших слоёв)."""
     rows = [r for r in rows if r["geometry"] is not None and not r["geometry"].is_empty]
     gdf = gpd.GeoDataFrame(rows, geometry="geometry", crs=mm.CRS_M)
     if simplify:
@@ -63,6 +65,8 @@ def write(name, rows, simplify=0):
     feats = []
     for _, r in gdf.iterrows():
         props = {k: clean(v) for k, v in r.items() if k != "geometry"}
+        if drop_empty:
+            props = {k: v for k, v in props.items() if v is not None}
         feats.append({"type": "Feature", "properties": props, "geometry": mapping(r.geometry)})
     js = json.dumps({"type": "FeatureCollection", "features": feats}, ensure_ascii=False, separators=(",", ":"))
     # округление координат без повторного разбора: через shapely-представление уже float, режем строкой
@@ -132,15 +136,17 @@ def main():
         dict(id=str(x["n"]), name=x["obj_name"], group=cat_group(x["category"]), geometry=x.geometry)
         for _, x in j.iterrows()], simplify=0.5)
 
-    # 3. Этажность (реестр МКД + OSM)
+    # 3. Все здания города (buildings_db.py)
+    print("База зданий…")
+    bd = bdb.buildings(d, poly, core, okn)
+    keep = ["bid", "address", "addr_src", "type", "name", "levels", "levels_src", "year", "year_src", "period",
+            "year_est", "heritage", "heritage_cat", "okn_id", "material", "condition", "use", "notes", "photo",
+            "checked", "info_src", "src", "area_m2", "complete", "in_settlement", "in_core"]
+    counts["buildings"] = write("buildings", [dict(geometry=g, **{k: x[k] for k in keep})
+                                              for g, (_, x) in zip(bd.geometry, bd.iterrows())],
+                                simplify=0.4, drop_empty=True)
     bl = mm.mkd_buildings(d)
-    bl = bl[bl["levels"].notna() & bl.intersects(poly.buffer(300))]
-    to_addr = lambda x: ", ".join(str(v) for v in (x.get("addr:street"), x.get("addr:housenumber")) if pd.notna(v))
-    counts["buildings_levels"] = write("buildings_levels", [
-        dict(levels=x["levels"], year=x["year"], src=x["src"], address=to_addr(x) or None,
-             tall=bool(x["levels"] >= mm.TALL_LEVELS), in_settlement=bool(x.geometry.intersects(poly)),
-             in_core=bool(x.geometry.intersects(core)), geometry=x.geometry)
-        for _, x in bl.iterrows()], simplify=0.5)
+    bl = bl[bl["levels"].notna()]
 
     # 4. Ценности
     counts["ensembles"] = write("ensembles", [

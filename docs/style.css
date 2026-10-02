@@ -57,6 +57,14 @@ button:hover { filter: brightness(1.12); }
 #list .ad { display: block; font-size: 12px; color: var(--muted); }
 footer { padding: 10px 18px 16px; font-size: 11px; color: var(--muted); }
 
+.blegend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.blegend span { display: inline-flex; align-items: center; gap: 5px; }
+.blegend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+.pop .bid { font: 11px ui-monospace, monospace; color: var(--muted); word-break: break-all; }
+.pop .copy { font-size: 11px; padding: 2px 8px; margin-left: 6px; flex: none; }
+.pop .src { color: var(--muted); font-size: 11px; }
+.pop .bar { height: 5px; background: var(--line); border-radius: 3px; margin: 2px 0 8px; }
+.pop .bar b { display: block; height: 100%; border-radius: 3px; background: var(--pot); }
 #toggle { display: none; }
 .muted { filter: grayscale(.8) contrast(.85) brightness(1.08); }
 

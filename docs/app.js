@@ -13,7 +13,7 @@ const GROUPS = {
   local: { label: "Местного значения", color: C.local, r: 6 },
   value: { label: "Ценный градоформирующий объект", color: C.value, r: 4.5 },
 };
-const FILES = ["boundaries", "order_points", "ovragi", "objects", "object_buildings", "buildings_levels",
+const FILES = ["boundaries", "order_points", "ovragi", "objects", "object_buildings", "buildings",
   "ensembles", "dominants", "squares", "streets", "views", "landscape", "verify", "projects"];
 // подписи полей во всплывающих окнах и в выгрузке
 const FIELD = {
@@ -21,7 +21,15 @@ const FIELD = {
   accuracy: "Точность", in_settlement: "В поселении", in_core: "В границе проекта", levels: "Этажей", year: "Год постройки",
   src: "Источник этажности", tall: "Многоэтажное", area_ha: "Площадь, га", note: "Примечание", kind: "Тип", n: "№",
   level: "Уровень", layer: "Слой", lat: "Широта", lon: "Долгота",
+  bid: "ID здания", addr_src: "Источник адреса", type: "Тип", levels_src: "Источник этажности", year_src: "Источник года",
+  period: "Период", year_est: "Год (оценка)", heritage: "Объект наследия", heritage_cat: "Категория наследия",
+  okn_id: "№ объекта", material: "Материал стен", condition: "Состояние", use: "Использование", notes: "Заметки",
+  photo: "Фото", checked: "Проверено", info_src: "Источник ручных данных", area_m2: "Площадь застройки, м²",
+  complete: "Заполненность (из 6)",
 };
+// карточка здания: поля по порядку и источники к ним
+const BCARD = [["type"], ["levels", "levels_src"], ["year", "year_src"], ["period"], ["material"], ["condition"],
+  ["use"], ["heritage"], ["heritage_cat"], ["name"], ["area_m2"], ["notes"], ["checked"], ["info_src"]];
 const HIDDEN = new Set(["group"]);
 
 const D = {};          // данные по файлам
@@ -71,14 +79,20 @@ function inView(f) {
 }
 
 // ───────── фильтры ─────────
-const F = { groups: new Set(Object.keys(GROUPS)), acc: new Set(), area: "all", q: "", lv: 4, y0: null, y1: null };
+const F = { groups: new Set(Object.keys(GROUPS)), acc: new Set(), area: "all", q: "", lv: 0, y0: null, y1: null,
+  gap: "", type: "", color: "complete" };
+
+function areaOk(p) {
+  if (F.area === "settlement") return !!p.in_settlement;
+  if (F.area === "core") return !!p.in_core;
+  if (F.area === "outside") return !!p.in_settlement && !p.in_core;
+  return true;
+}
 
 function objOk(f) {
   const p = f.properties;
   if (!F.groups.has(p.group) || !F.acc.has(p.accuracy)) return false;
-  if (F.area === "settlement" && !p.in_settlement) return false;
-  if (F.area === "core" && !p.in_core) return false;
-  if (F.area === "outside" && (!p.in_settlement || p.in_core)) return false;
+  if (!areaOk(p)) return false;
   if (F.q) {
     const s = `${p.name} ${p.address} ${p.id}`.toLowerCase().replace(/ё/g, "е");
     if (!F.q.split(/\s+/).every((w) => s.includes(w))) return false;
@@ -86,22 +100,67 @@ function objOk(f) {
   return true;
 }
 
+const GAPS = {
+  address: (p) => !p.address, levels: (p) => p.levels == null, year: (p) => p.year_est == null,
+  sparse: (p) => (p.complete || 0) <= 1, known: (p) => !!p.address, heritage: (p) => !!p.heritage,
+  manual: (p) => !!(p.info_src || p.checked || p.material || p.condition || p.notes),
+};
+
 function bldOk(f) {
   const p = f.properties;
-  if (p.levels < F.lv) return false;
-  if ((F.y0 || F.y1) && !p.year) return false;
-  if (F.y0 && p.year < F.y0) return false;
-  if (F.y1 && p.year > F.y1) return false;
+  if (!areaOk(p)) return false;
+  if (F.gap && !GAPS[F.gap](p)) return false;
+  if (F.type && (p.type || "Не указан") !== F.type) return false;
+  if (F.lv && !(p.levels >= F.lv)) return false;
+  if ((F.y0 || F.y1) && p.year_est == null) return false;
+  if (F.y0 && p.year_est < F.y0) return false;
+  if (F.y1 && p.year_est > F.y1) return false;
   return true;
 }
 
 const objects = () => D.objects.features.filter(objOk);
 const objIds = () => new Set(objects().map((f) => f.properties.id));
+const buildings = () => D.buildings.features.filter(bldOk);
 
-function levelColor(lv) {
-  if (lv >= META.tall_levels) return C.prob;
-  return ["#E9E4DA", "#D8D0C2", "#BDB3A3", "#A39887"][Math.min(Math.max(lv, 1), 4) - 1];
+// раскраска зданий: режим → [[подпись, цвет, условие]], первый подходящий
+const NODATA = "#E2DED6";
+const TYPE_COLORS = { "Жилой дом (индивидуальный)": "#D9A88C", "Многоквартирный дом": "#B5532E", "Жилое здание": "#C98F6E",
+  "Гараж": "#A9A9B0", "Гаражи": "#A9A9B0", "Производственное": "#6E6A80", "Склад": "#8C8899", "Торговое": "#2F5D8A",
+  "Коммерческое": "#2F5D8A", "Храм": "#5A2A30", "Мечеть": "#5A2A30", "Культовое": "#5A2A30" };
+const COLOR = {
+  complete: [["0", NODATA, (p) => !p.complete], ["1", "#C9E2D9", (p) => p.complete === 1], ["2", "#93C7B4", (p) => p.complete === 2],
+    ["3", "#5FA48E", (p) => p.complete === 3], ["4–6", "#2E7D6B", (p) => p.complete >= 4]],
+  levels: [["нет данных", NODATA, (p) => p.levels == null], ["1", "#E9D9B8", (p) => p.levels <= 1], ["2", "#D9A88C", (p) => p.levels === 2],
+    ["3", "#B9707A", (p) => p.levels === 3], ["4+", C.prob, (p) => p.levels >= 4]],
+  year: [["нет данных", NODATA, (p) => p.year_est == null], ["до 1800", "#3B1E14", (p) => p.year_est < 1800],
+    ["1800–1917", "#8A5A44", (p) => p.year_est <= 1917], ["1918–1960", "#C79A6B", (p) => p.year_est <= 1960],
+    ["1961–1991", "#7FA2C1", (p) => p.year_est <= 1991], ["после 1991", "#2F5D8A", () => true]],
+  type: [["не указан", NODATA, (p) => !p.type], ...Object.entries(TYPE_COLORS)
+    .filter(([k], i, a) => a.findIndex(([, c]) => c === TYPE_COLORS[k]) === i)
+    .map(([k, c]) => [k.replace(/ \(.*/, ""), c, (p) => TYPE_COLORS[p.type] === c]), ["прочее", "#C8C2B6", () => true]],
+  src: [["OSM", "#B9707A", (p) => p.src === "OSM"], ["спутник (Microsoft ML)", "#9DB4C8", () => true]],
+};
+const bColor = (p) => (COLOR[F.color].find(([, , ok]) => ok(p)) || [0, NODATA])[1];
+
+function renderLegend() {
+  $("b-legend").innerHTML = COLOR[F.color].map(([t, c]) => `<span><i style="background:${c}"></i>${esc(t)}</span>`).join("");
 }
+
+function buildingPopup(p) {
+  const v = (k) => p[k] != null && p[k] !== "";
+  const rows = BCARD.filter(([k]) => v(k)).map(([k, s]) =>
+    `<tr><td>${esc(FIELD[k] || k)}</td><td>${esc(fmt(p[k]))}${s && v(s) ? ` <span class="src">· ${esc(p[s])}</span>` : ""}</td></tr>`).join("");
+  const pct = Math.round(((p.complete || 0) / 6) * 100);
+  const photo = v("photo") ? `<p><a href="${esc(p.photo)}" target="_blank" rel="noopener">Фото</a></p>` : "";
+  return `<div class="pop"><h3>${esc(p.address || "Адрес не известен")}</h3>
+    ${v("addr_src") ? `<div class="src">адрес: ${esc(p.addr_src)}</div>` : ""}
+    <div class="src">Заполнено ${p.complete || 0} из 6</div><div class="bar"><b style="width:${pct}%"></b></div>
+    <table>${rows || '<tr><td colspan="2">Данных пока нет</td></tr>'}</table>${photo}
+    <div class="src" style="margin-top:6px">Контур: ${esc(p.src)}</div>
+    <div style="display:flex;align-items:center;margin-top:4px"><span class="bid">${esc(p.bid)}</span>
+    <button class="copy" onclick="navigator.clipboard.writeText('${esc(p.bid)}');this.textContent='скопировано'">ID</button></div></div>`;
+}
+const bldRenderer = L.canvas({ pane: "bld", tolerance: 2 });
 
 // ───────── слои ─────────
 const fc = (src, where) => ({ type: "FeatureCollection", features: D[src].features.filter(where || (() => true)) });
@@ -126,7 +185,7 @@ const DEFS = [
     build: () => outline("boundaries", (f) => f.properties.level === 2, { color: C.l2, weight: 2.2, dashArray: "8 5" }) },
   { id: "pts", label: "Характерные точки Приказа № 2969", sw: ["dot", C.l2], on: false, src: "order_points",
     build: () => L.geoJSON(D.order_points, { pane: "pts",
-      pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 3.5, color: "#fff", weight: 1, fillColor: C.l2, fillOpacity: 1 })
+      pointToLayer: (f, ll) => L.circleMarker(ll, { pane: "pts", radius: 3.5, color: "#fff", weight: 1, fillColor: C.l2, fillOpacity: 1 })
         .bindTooltip(String(f.properties.n), { direction: "top" }),
       onEachFeature: (f, l) => l.bindPopup(popup(f.properties)) }) },
   { id: "l3", label: "Уровень 3 — граница проекта", sw: ["line", C.l3], on: true,
@@ -139,31 +198,31 @@ const DEFS = [
     features: objects,
     build: () => L.geoJSON({ type: "FeatureCollection", features: objects() }, { pane: "pts",
       pointToLayer: (f, ll) => { const g = GROUPS[f.properties.group];
-        return L.circleMarker(ll, { radius: g.r, color: "#fff", weight: 1.2, fillColor: g.color, fillOpacity: 1 }); },
+        return L.circleMarker(ll, { pane: "pts", radius: g.r, color: "#fff", weight: 1.2, fillColor: g.color, fillOpacity: 1 }); },
       onEachFeature: (f, l) => { l.bindPopup(popup(f.properties)); l.bindTooltip(esc(f.properties.name), { direction: "top" });
         f._layer = l; } }) },
-  { id: "obld", label: "Здания ОКН и ценных объектов", sw: ["fill", C.bldOkn], on: true, dynamic: true,
+  { id: "obld", label: "Здания ОКН и ценных объектов (обводка)", sw: ["line", C.bldOkn], on: true, dynamic: true,
     features: () => { const ids = objIds(); return D.object_buildings.features.filter((f) => ids.has(f.properties.id)); },
-    build() { return L.geoJSON({ type: "FeatureCollection", features: this.features() }, { pane: "bld",
-      style: (f) => ({ stroke: false, fillOpacity: 0.9, fillColor: f.properties.group === "value" ? C.bldVal : C.bldOkn }),
-      onEachFeature: (f, l) => l.bindPopup(popup(f.properties)) }); } },
+    // только обводка и без кликов — клик попадает в карточку здания под ней
+    build() { return L.geoJSON({ type: "FeatureCollection", features: this.features() }, { pane: "lines", interactive: false,
+      style: (f) => ({ color: f.properties.group === "value" ? C.bldVal : C.bldOkn, weight: 2.2, fill: false }) }); } },
 
-  { group: "Этажность", id: "levels", label: "Здания с известной этажностью", sw: ["fill", C.prob], on: true, dynamic: true,
-    features: () => D.buildings_levels.features.filter(bldOk),
-    build() { return L.geoJSON({ type: "FeatureCollection", features: this.features() }, { pane: "bld",
-      style: (f) => ({ color: "#fff", weight: 0.5, fillOpacity: 0.9, fillColor: levelColor(f.properties.levels) }),
-      onEachFeature: (f, l) => l.bindPopup(popup(f.properties, "Здание")) }); } },
+  { group: "Здания города", id: "buildings", label: "Все здания (контуры)", sw: ["fill", "#93C7B4"], on: true, dynamic: true,
+    features: buildings,
+    build() { return L.geoJSON({ type: "FeatureCollection", features: this.features() }, { renderer: bldRenderer,
+      style: (f) => ({ color: "#7D776C", weight: 0.6, opacity: 0.8, fillOpacity: 0.9, fillColor: bColor(f.properties) }),
+      onEachFeature: (f, l) => l.bindPopup(() => buildingPopup(f.properties), { maxWidth: 320 }) }); } },
 
   { group: "Ценности", id: "ensembles", label: "Ансамбли и ценная среда", sw: ["fill", C.ens], on: false, src: "ensembles",
     build: () => L.geoJSON(D.ensembles, { pane: "areas", style: { color: C.ens, weight: 1.5, fillColor: C.ens, fillOpacity: 0.15 },
       onEachFeature: (f, l) => l.bindPopup(popup(f.properties)) }) },
   { id: "dominants", label: "Высотные доминанты", sw: ["tri", C.federal], on: false, src: "dominants",
     build: () => L.geoJSON(D.dominants, { pane: "marks",
-      pointToLayer: (f, ll) => L.marker(ll, { icon: L.divIcon({ className: "dom", html: "▲", iconSize: [18, 18] }) }),
+      pointToLayer: (f, ll) => L.marker(ll, { pane: "marks", icon: L.divIcon({ className: "dom", html: "▲", iconSize: [18, 18] }) }),
       onEachFeature: (f, l) => { l.bindPopup(popup(f.properties)); l.bindTooltip(esc(f.properties.name), { direction: "top", offset: [0, -8] }); } }) },
   { id: "squares", label: "Исторические площади", sw: ["sq", C.plan], on: false, src: "squares",
     build: () => L.geoJSON(D.squares, { pane: "marks",
-      pointToLayer: (f, ll) => L.marker(ll, { icon: L.divIcon({ className: "",
+      pointToLayer: (f, ll) => L.marker(ll, { pane: "marks", icon: L.divIcon({ className: "",
         html: `<div style="width:12px;height:12px;background:#fff;border:2.5px solid ${C.plan}"></div>`, iconSize: [12, 12] }) }),
       onEachFeature: (f, l) => { l.bindPopup(popup(f.properties)); l.bindTooltip(esc(f.properties.name), { direction: "right", offset: [8, 0] }); } }) },
   { id: "streets", label: "Охраняемая планировка (улицы)", sw: ["line", C.plan], on: false, src: "streets",
@@ -184,7 +243,7 @@ const DEFS = [
       onEachFeature: (f, l) => l.bindPopup(popup(f.properties)) }) },
   { id: "verify", label: "Проверить на месте (1–8)", sw: ["dot", "#26262B"], on: false, src: "verify",
     build: () => L.geoJSON(D.verify, { pane: "marks",
-      pointToLayer: (f, ll) => L.marker(ll, { icon: L.divIcon({ className: "", html: `<div class="vnum">${f.properties.n}</div>`, iconSize: [24, 24] }) }),
+      pointToLayer: (f, ll) => L.marker(ll, { pane: "marks", icon: L.divIcon({ className: "", html: `<div class="vnum">${f.properties.n}</div>`, iconSize: [24, 24] }) }),
       onEachFeature: (f, l) => { l.bindPopup(popup(f.properties)); l.bindTooltip(esc(f.properties.name), { direction: "top", offset: [0, -10] }); } }) },
 ];
 for (const d of DEFS) if (!d.features) d.features = () => D[d.src || "boundaries"].features;
@@ -226,6 +285,9 @@ function render(d) {
 
 function refresh() {
   for (const d of DEFS) if (d.dynamic) render(d);
+  const bs = buildings();
+  const known = (k) => bs.filter((f) => f.properties[k] != null).length;
+  $("b-count").textContent = `Зданий: ${bs.length} · с адресом ${known("address")} · этажность ${known("levels")} · год ${known("year_est")}`;
   renderList();
   exportCount();
   saveState();
@@ -254,7 +316,7 @@ function selection() {
   const what = $("x-what").value;
   const tag = (d) => (f) => ({ ...f, properties: { layer: d.label, ...f.properties } });
   if (what === "objects") return objects().filter(inView);
-  if (what === "buildings") return D.buildings_levels.features.filter(bldOk).filter(inView);
+  if (what === "buildings") return buildings().filter(inView);
   return DEFS.filter((d) => d.on).flatMap((d) => d.features().filter(inView).map(tag(d)));
 }
 
@@ -337,9 +399,21 @@ function buildFilters() {
     clearTimeout(t);
     t = setTimeout(() => { F.q = e.target.value.trim().toLowerCase().replace(/ё/g, "е"); refresh(); }, 150);
   });
-  F.lv = META.tall_levels || 4;
-  $("f-lv").value = F.lv; $("lv-v").textContent = F.lv;
-  $("f-lv").addEventListener("input", (e) => { F.lv = +e.target.value; $("lv-v").textContent = F.lv; refresh(); });
+  const lvText = () => ($("lv-v").textContent = F.lv ? F.lv : "любой");
+  $("f-lv").value = F.lv; lvText();
+  let tl;
+  $("f-lv").addEventListener("input", (e) => {
+    F.lv = +e.target.value; lvText();
+    clearTimeout(tl); tl = setTimeout(refresh, 120);
+  });
+  const types = {};
+  D.buildings.features.forEach((f) => { const t = f.properties.type || "Не указан"; types[t] = (types[t] || 0) + 1; });
+  $("f-type").innerHTML += Object.entries(types).sort((a, b) => b[1] - a[1])
+    .map(([t, n]) => `<option value="${esc(t)}">${esc(t)} (${n})</option>`).join("");
+  $("f-type").addEventListener("change", (e) => { F.type = e.target.value; refresh(); });
+  $("f-gap").addEventListener("change", (e) => { F.gap = e.target.value; refresh(); });
+  $("f-color").addEventListener("change", (e) => { F.color = e.target.value; renderLegend(); render(DEFS.find((d) => d.id === "buildings")); });
+  renderLegend();
   $("f-y0").addEventListener("change", (e) => { F.y0 = +e.target.value || null; refresh(); });
   $("f-y1").addEventListener("change", (e) => { F.y1 = +e.target.value || null; refresh(); });
   $("f-view").addEventListener("change", () => { renderList(); exportCount(); });
@@ -356,8 +430,7 @@ function buildFilters() {
   const fromHash = loadState();
   buildLayerList();
   buildFilters();
-  for (const d of DEFS) render(d);
+  for (const d of DEFS) if (!d.dynamic) render(d);
   if (!fromHash) map.fitBounds(L.geoJSON(fc("boundaries", (f) => f.properties.level === 2)).getBounds(), { padding: [20, 20] });
-  renderList();
-  exportCount();
+  refresh();
 })();
